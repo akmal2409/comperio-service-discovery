@@ -21,6 +21,7 @@
     <jetbrains.annotations.version>23.0.0</jetbrains.annotations.version>
     <logback-classic.version>1.4.3</logback-classic.version>
     <jcip-annotations.version>1.0</jcip-annotations.version>
+    <assertj-core.version>3.22.0</assertj-core.version>
   </properties>
 
   <dependencyManagement>
@@ -36,6 +37,11 @@
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback-classic.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${assertj-core.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
