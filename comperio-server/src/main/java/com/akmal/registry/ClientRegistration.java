@@ -10,7 +10,7 @@ public record ClientRegistration(
     String instanceId,
     String host,
     InetAddress ipAddress,
-    Instant timestamp,
+    long timestamp,
     ClientStatus status
 ) {
 

@@ -1,7 +1,9 @@
 package com.akmal.registry;
 
+import com.akmal.shared.clock.Clock;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -14,14 +16,20 @@ import org.slf4j.LoggerFactory;
  * Implementation of the {@link ClientRegistry} interface that supports concurrent access
  * be delegating concurrency to {@link ConcurrentMap} implementations.
  * The only custom lock-free synchronization that has been implemented is the CAS removal of the entry.
+ * Additionally if the timeout is set to something lower than Long.MAX_VALUE the registry will
+ * perform eviction of expired entries lazily on demand during read and removal.
  */
 @ThreadSafe
 class ConcurrentClientRegistry implements ClientRegistry {
-  private static final Logger log = LoggerFactory.getLogger(ConcurrentClientRegistry.class);
-  private final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
+  protected static final Logger log = LoggerFactory.getLogger(ConcurrentClientRegistry.class);
+  protected final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
+  private final long timeoutMs;
+  private final Clock clock; // solely for testing time dependent methods without waiting
 
-  public ConcurrentClientRegistry() {
+  public ConcurrentClientRegistry(long timeoutMs, Clock clock) {
+    this.timeoutMs = timeoutMs;
     this.registry = new ConcurrentHashMap<>();
+    this.clock = clock;
   }
 
   @Override
@@ -29,10 +37,13 @@ class ConcurrentClientRegistry implements ClientRegistry {
     registry.computeIfAbsent(application, key -> new ConcurrentHashMap<>())
         .put(registration.instanceId(), registration);
 
+    this.evictEldestAppEntries(application);
+
     log.debug("message=Registered client;application={};instance_id={};address={};host={};status={};timestamp={}", application,
         registration.instanceId(), registration.ipAddress() != null ? registration.ipAddress().getHostAddress() : null, registration.host(),
         registration.status(), registration.timestamp());
   }
+
 
   /**
    * Method deregisters the client by removing the entry in the registry.
@@ -53,7 +64,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
     while (true) {
       if (curMap == null) break;
 
-      ConcurrentMap<String, ClientRegistration> newMap = new ConcurrentHashMap<>(curMap);
+      final var newMap = cloneClientMapFilterExpired(curMap);
 
       if ((oldRegistration = newMap.remove(instanceId)) != null) {
         removed = true;
@@ -89,6 +100,8 @@ class ConcurrentClientRegistry implements ClientRegistry {
 
   @Override
   public Collection<ClientRegistration> findAllByApplication(@NotNull String application) {
+    this.evictEldestAppEntries(application);
+
     final var instanceMap = registry.get(application);
 
     if (instanceMap == null) return Collections.emptyList();
@@ -99,10 +112,58 @@ class ConcurrentClientRegistry implements ClientRegistry {
   @Override
   public Optional<ClientRegistration> findOneByApplicationAndInstanceId(@NotNull String application,
       @NotNull String instanceId) {
+    this.evictEldestAppEntries(application);
+
     final var instanceMap = registry.get(application);
 
     if (instanceMap == null) return Optional.empty();
 
     return Optional.ofNullable(instanceMap.get(instanceId));
+  }
+
+  /**
+   * Lazily evicts old entries for a specified key by using CAS algorithm.
+   * Checks if currentTime - entryTime < timeoutMs in that case we leave the entry.
+   * @param application
+   */
+  private void evictEldestAppEntries(String application) {
+    if (timeoutMs == Long.MAX_VALUE) return;
+
+    var curMap = registry.get(application);
+
+    while (true) {
+      if (curMap == null) break;
+
+      final var newMap = cloneClientMapFilterExpired(curMap);
+
+      if (newMap.size() == curMap.size()) break;
+
+      if (newMap.isEmpty()) {
+        if (!registry.remove(application, curMap)) {
+          curMap = registry.get(application);
+          continue;
+        }
+      } else {
+        if (!registry.replace(application, curMap, newMap)) {
+          curMap = registry.get(application);
+          continue;
+        }
+      }
+
+      break;
+    }
+  }
+
+  private ConcurrentMap<String, ClientRegistration> cloneClientMapFilterExpired(ConcurrentMap<String, ClientRegistration> map) {
+    final var newMap = new ConcurrentHashMap<String, ClientRegistration>(map.size());
+    long currentTime = clock.currentTimeMillis();
+
+    for (Entry<String, ClientRegistration> entry: map.entrySet()) {
+      if ((currentTime - entry.getValue().timestamp()) < timeoutMs) {
+        newMap.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    return newMap;
   }
 }

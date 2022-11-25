@@ -1,5 +1,7 @@
 package com.akmal.registry;
 
+import com.akmal.shared.clock.Clock;
+import com.akmal.shared.clock.SystemClock;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -50,7 +52,31 @@ public interface ClientRegistry {
    *
    * @return empty registry.
    */
-  static ClientRegistry newInstance() {
-    return new ConcurrentClientRegistry();
+  static ClientRegistry defaultRegistry() {
+    return new ConcurrentClientRegistry(Long.MAX_VALUE, new SystemClock());
+  }
+
+  /**
+   * Constructs an instance of the registry that lazily evicts the entries
+   * if their timestamp is greater than the one specified in timeout.
+   *
+   * @param timeout in ms.
+   * @return empty registry with eviction
+   */
+  static ClientRegistry withExpiry(long timeout) {
+    return new ConcurrentClientRegistry(timeout, new SystemClock());
+  }
+
+  /**
+   * Constructs an instance of the registry that lazily evicts the entries
+   * if their timestamp is greater than the one specified in timeout.
+   * Additionally, it takes a {@link Clock} implementation if you want to use
+   * something other than a system clock.
+   *
+   * @param timeout in ms.
+   * @return empty registry with eviction
+   */
+  static ClientRegistry withExpiry(long timeout, Clock clock) {
+    return new ConcurrentClientRegistry(timeout, clock);
   }
 }
