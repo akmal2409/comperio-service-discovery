@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import net.jcip.annotations.ThreadSafe;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +21,10 @@ import org.slf4j.LoggerFactory;
  * perform eviction of expired entries lazily on demand during read and removal.
  */
 @ThreadSafe
+@VisibleForTesting
 class ConcurrentClientRegistry implements ClientRegistry {
   protected static final Logger log = LoggerFactory.getLogger(ConcurrentClientRegistry.class);
-  protected final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
+  @VisibleForTesting protected final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
   private final long timeoutMs;
   private final Clock clock; // solely for testing time dependent methods without waiting
 
@@ -37,7 +39,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
     registry.computeIfAbsent(application, key -> new ConcurrentHashMap<>())
         .put(registration.instanceId(), registration);
 
-    this.evictEldestAppEntries(application);
+    this.evictExpiredEntries(application);
 
     log.debug("message=Registered client;application={};instance_id={};address={};host={};status={};timestamp={}", application,
         registration.instanceId(), registration.ipAddress() != null ? registration.ipAddress().getHostAddress() : null, registration.host(),
@@ -100,7 +102,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
 
   @Override
   public Collection<ClientRegistration> findAllByApplication(@NotNull String application) {
-    this.evictEldestAppEntries(application);
+    this.evictExpiredEntries(application);
 
     final var instanceMap = registry.get(application);
 
@@ -112,7 +114,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
   @Override
   public Optional<ClientRegistration> findOneByApplicationAndInstanceId(@NotNull String application,
       @NotNull String instanceId) {
-    this.evictEldestAppEntries(application);
+    this.evictExpiredEntries(application);
 
     final var instanceMap = registry.get(application);
 
@@ -126,7 +128,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
    * Checks if currentTime - entryTime < timeoutMs in that case we leave the entry.
    * @param application
    */
-  private void evictEldestAppEntries(String application) {
+  private void evictExpiredEntries(String application) {
     if (timeoutMs == Long.MAX_VALUE) return;
 
     var curMap = registry.get(application);
@@ -159,7 +161,7 @@ class ConcurrentClientRegistry implements ClientRegistry {
     long currentTime = clock.currentTimeMillis();
 
     for (Entry<String, ClientRegistration> entry: map.entrySet()) {
-      if ((currentTime - entry.getValue().timestamp()) < timeoutMs) {
+      if (timeoutMs == Long.MAX_VALUE || (currentTime - entry.getValue().timestamp()) < timeoutMs) {
         newMap.put(entry.getKey(), entry.getValue());
       }
     }
