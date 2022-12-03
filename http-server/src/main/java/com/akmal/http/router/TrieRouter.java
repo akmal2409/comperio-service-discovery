@@ -22,11 +22,18 @@ class TrieRouter implements Router {
   }
 
   private static class TerminalTrieNode extends TrieNode {
-    private final Route route;
+    private final Route[] routes;
 
-    private TerminalTrieNode(Route route) {
-      super();
-      this.route = route;
+    private TerminalTrieNode() {
+      this.routes = new Route[6];
+    }
+
+    private void addRouteForMethod(HttpMethod method, Route route) {
+      this.routes[method.ordinal()] = route;
+    }
+
+    private Route routeForMethod(HttpMethod method) {
+      return this.routes[method.ordinal()];
     }
   }
 
@@ -51,12 +58,14 @@ class TrieRouter implements Router {
       cursor = cursor.children[characters[i]];
     }
 
-    cursor.children[characters[characters.length - 1]] = new TerminalTrieNode(route);
+    if (cursor.children[characters[characters.length - 1]] == null) cursor.children[characters[characters.length - 1]] = new TerminalTrieNode();
+
+    ((TerminalTrieNode) cursor.children[characters[characters.length - 1]]).addRouteForMethod(route.getMethod(), route);
     return this;
   }
 
   @Override
-  public Optional<RouteMatch> match(String path) {
+  public Optional<RouteMatch> match(HttpMethod method, String path) {
     path = path.charAt(path.length() - 1) != '/' ? path + '/' : path; // path must always end with an ending slash.
     TrieNode cursor = this.root;
 
@@ -102,7 +111,15 @@ class TrieRouter implements Router {
       }
     }
 
-    if (cursor instanceof TerminalTrieNode terminal) return Optional.of(RouteMatch.withVariables(terminal.route, variables));
-    else return Optional.empty();
+    if (cursor instanceof TerminalTrieNode terminal) {
+      Route route = terminal.routeForMethod(method);
+
+      if (route != null) {
+        return Optional.of(RouteMatch.withVariables(terminal.routeForMethod(method), variables));
+      }
+    }
+
+
+    return Optional.empty();
   }
 }

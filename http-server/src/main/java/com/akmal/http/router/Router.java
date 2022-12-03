@@ -18,5 +18,10 @@ public interface Router {
    * @param path excluding domain
    * @return
    */
-  Optional<RouteMatch> match(String path);
+  Optional<RouteMatch> match(HttpMethod method, String path);
+
+  static Router defaultRouter() {
+    return new TrieRouter();
+  }
+
 }

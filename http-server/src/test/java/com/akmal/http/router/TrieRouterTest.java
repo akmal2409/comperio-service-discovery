@@ -27,7 +27,7 @@ class TrieRouterTest {
 
     this.router.register(expectedRoute);
 
-    RouteMatch actualMatch = this.router.match(expectedRoute.getPath()).orElse(null);
+    RouteMatch actualMatch = this.router.match(HttpMethod.GET, expectedRoute.getPath()).orElse(null);
 
     assertThat(actualMatch)
         .isNotNull()
@@ -50,7 +50,7 @@ class TrieRouterTest {
 
     this.router.register(expectedRoute);
 
-    RouteMatch actualMatch = this.router.match(path).orElse(null);
+    RouteMatch actualMatch = this.router.match(HttpMethod.GET, path).orElse(null);
 
     assertThat(actualMatch)
         .isNotNull()
@@ -69,7 +69,7 @@ class TrieRouterTest {
     this.router.register(expectedRoute);
 
 
-    assertThatNoException().isThrownBy(() -> this.router.match(path));
+    assertThatNoException().isThrownBy(() -> this.router.match(HttpMethod.GET, path));
   }
 
   @Test
@@ -82,7 +82,7 @@ class TrieRouterTest {
 
     this.router.register(expectedRoute);
 
-    RouteMatch match = router.match(path).orElse(null);
+    RouteMatch match = router.match(HttpMethod.GET, path).orElse(null);
 
     assertThat(match)
         .isNotNull()
@@ -102,7 +102,7 @@ class TrieRouterTest {
     this.router.register(expectedSpecificRoute);
     this.router.register(expectedLessSpecificRoute);
 
-    RouteMatch match = router.match(path).orElse(null);
+    RouteMatch match = router.match(HttpMethod.GET, path).orElse(null);
 
     assertThat(match)
         .isNotNull()
@@ -122,12 +122,45 @@ class TrieRouterTest {
     this.router.register(expectedSpecificRoute);
     this.router.register(expectedLessSpecificRoute);
 
-    RouteMatch match = router.match(path).orElse(null);
+    RouteMatch match = router.match(HttpMethod.GET, path).orElse(null);
 
     assertThat(match)
         .isNotNull()
         .extracting(RouteMatch::route)
         .usingRecursiveComparison()
         .isEqualTo(expectedLessSpecificRoute);
+  }
+
+  @Test
+  @DisplayName("Should register all different handlers for different verbs on the same route")
+  void shouldRegisterAllDiffHandlerForVerbsOnSamePath() {
+    String path = "/users";
+    Route expectedGetRoute = Route.of(HttpMethod.GET, path, handler);
+    Route expectedPatchRoute = Route.of(HttpMethod.PATCH, path, handler);
+    Route expectedHeadRoute = Route.of(HttpMethod.HEAD, path, handler);
+    Route expectedPutRoute = Route.of(HttpMethod.PUT, path, handler);
+    Route expectedOptionsRoute = Route.of(HttpMethod.OPTIONS, path, handler);
+    Route expectedPostRoute = Route.of(HttpMethod.POST, path, handler);
+
+    this.router.register(expectedGetRoute);
+    this.router.register(expectedPatchRoute);
+    this.router.register(expectedHeadRoute);
+    this.router.register(expectedPutRoute);
+    this.router.register(expectedOptionsRoute);
+    this.router.register(expectedPostRoute);
+
+    RouteMatch actualGetMatch = router.match(HttpMethod.GET, path).orElse(null);
+    RouteMatch actualPatchMatch = router.match(HttpMethod.PATCH, path).orElse(null);
+    RouteMatch actualHeadMatch = router.match(HttpMethod.HEAD, path).orElse(null);
+    RouteMatch actualPutMatch = router.match(HttpMethod.PUT, path).orElse(null);
+    RouteMatch actualOptionsMatch = router.match(HttpMethod.OPTIONS, path).orElse(null);
+    RouteMatch actualPostMatch = router.match(HttpMethod.POST, path).orElse(null);
+
+    assertThat(actualGetMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedGetRoute);
+    assertThat(actualPatchMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedPatchRoute);
+    assertThat(actualHeadMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedHeadRoute);
+    assertThat(actualPutMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedPutRoute);
+    assertThat(actualOptionsMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedOptionsRoute);
+    assertThat(actualPostMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedPostRoute);
   }
 }
