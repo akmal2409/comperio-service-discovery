@@ -8,7 +8,6 @@
   <artifactId>compreio</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <modules>
-    <module>storage</module>
     <module>comperio-server</module>
     <module>http-server</module>
   </modules>
