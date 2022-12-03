@@ -1,5 +1,6 @@
 package com.akmal.http.server;
 
+import com.akmal.http.HttpHandler;
 import com.akmal.http.HttpStatus;
 import com.akmal.http.MediaType;
 import com.akmal.http.exception.http.AbstractHttpRequestException;
@@ -51,8 +52,8 @@ public class HttpServer implements Runnable, AutoCloseable {
   };
 
   private final ExecutorService executorService;
-  private final Router router;
-  private final Collection<Route> routes;
+  private final Router<HttpHandler> router;
+  private final Collection<Route<HttpHandler>> routes;
   private final int port;
   private final InetAddress bindAddress;
 
@@ -179,8 +180,8 @@ public class HttpServer implements Runnable, AutoCloseable {
   public static class Builder {
 
     private ExecutorService executorService;
-    private Router router;
-    private Collection<Route> routes;
+    private Router<HttpHandler> router;
+    private Collection<Route<HttpHandler>> routes;
     private final int port;
     private String bindAddress;
     private final ThreadFactory serverThreadFactory = runnable -> Thread.ofVirtual()
@@ -194,7 +195,7 @@ public class HttpServer implements Runnable, AutoCloseable {
       this.bindAddress = "0.0.0.0";
     }
 
-    public Builder addRoute(Route route) {
+    public Builder addRoute(Route<HttpHandler> route) {
       this.routes.add(route);
       return this;
     }
@@ -209,18 +210,18 @@ public class HttpServer implements Runnable, AutoCloseable {
       return this;
     }
 
-    public Builder withRoutes(Collection<Route> routes) {
+    public Builder withRoutes(Collection<Route<HttpHandler>> routes) {
       this.routes.addAll(routes);
       return this;
     }
 
-    public Builder withRouter(Router router) {
+    public Builder withRouter(Router<HttpHandler> router) {
       this.router = router;
       return this;
     }
 
     public HttpServer build() {
-      for (Route route : this.routes) {
+      for (Route<HttpHandler> route : this.routes) {
         this.router.register(route);
       }
 

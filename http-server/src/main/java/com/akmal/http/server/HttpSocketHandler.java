@@ -1,5 +1,6 @@
 package com.akmal.http.server;
 
+import com.akmal.http.HttpHandler;
 import com.akmal.http.HttpProtocol;
 import com.akmal.http.HttpStatus;
 import com.akmal.http.MediaType;
@@ -21,12 +22,12 @@ public class HttpSocketHandler implements SocketHandler {
   private static final Logger log = LoggerFactory.getLogger(HttpSocketHandler.class);
   private static final int PARSING_TIMEOUT = 3000;
   private final Socket socket;
-  private final Router router;
+  private final Router<HttpHandler> router;
 
   private final HttpRequestParser requestParser;
   private final ExceptionHandler exceptionHandler;
 
-  public HttpSocketHandler(Socket socket, Router router, HttpRequestParser requestParser,
+  public HttpSocketHandler(Socket socket, Router<HttpHandler> router, HttpRequestParser requestParser,
       ExceptionHandler exceptionHandler) {
     this.socket = socket;
     this.router = router;
@@ -49,9 +50,9 @@ public class HttpSocketHandler implements SocketHandler {
 
       try {
         ParsedHttpRequestDetails requestDetails = requestParser.parse(in);
-//        socket.setSoTimeout(0);
+        socket.setSoTimeout(0);
 
-        final Optional<RouteMatch> routeMatchOpt = this.router.match(requestDetails.method(), requestDetails.path());
+        final Optional<RouteMatch<HttpHandler>> routeMatchOpt = this.router.match(requestDetails.method(), requestDetails.path());
 
         if (routeMatchOpt.isEmpty()) {
           throw new PathNotFoundException(HttpStatus.NOT_FOUND, "Requested path is not found");

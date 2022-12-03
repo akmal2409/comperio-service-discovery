@@ -11,7 +11,7 @@ import java.util.Optional;
  * will not consider it a template variable. Example of when it will fail is following: path1 = /users/{userId}/cars/hello path2 = /users/specific/cars , given path = /users/specific/cars/hello
  * it will fail to match any of the routes.
  */
-class TrieRouter implements Router {
+class TrieRouter<H> implements Router<H> {
 
   private static class TrieNode {
     protected final TrieNode[] children;
@@ -21,18 +21,19 @@ class TrieRouter implements Router {
     }
   }
 
-  private static class TerminalTrieNode extends TrieNode {
-    private final Route[] routes;
+  private static class TerminalTrieNode<H> extends TrieNode {
+    private final Route<H>[] routes;
 
+    @SuppressWarnings("unchecked")
     private TerminalTrieNode() {
-      this.routes = new Route[6];
+      this.routes = (Route<H>[]) new Route[6];
     }
 
-    private void addRouteForMethod(HttpMethod method, Route route) {
+    private void addRouteForMethod(HttpMethod method, Route<H> route) {
       this.routes[method.ordinal()] = route;
     }
 
-    private Route routeForMethod(HttpMethod method) {
+    private Route<H> routeForMethod(HttpMethod method) {
       return this.routes[method.ordinal()];
     }
   }
@@ -44,8 +45,9 @@ class TrieRouter implements Router {
   }
 
 
+  @SuppressWarnings("unchecked")
   @Override
-  public Router register(Route route) {
+  public Router<H> register(Route<H> route) {
 
     TrieNode cursor = this.root;
     char[] characters = route.getPathWithWildcards().toCharArray();
@@ -60,12 +62,13 @@ class TrieRouter implements Router {
 
     if (cursor.children[characters[characters.length - 1]] == null) cursor.children[characters[characters.length - 1]] = new TerminalTrieNode();
 
-    ((TerminalTrieNode) cursor.children[characters[characters.length - 1]]).addRouteForMethod(route.getMethod(), route);
+    ((TerminalTrieNode<H>) cursor.children[characters[characters.length - 1]]).addRouteForMethod(route.getMethod(), route);
     return this;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public Optional<RouteMatch> match(HttpMethod method, String path) {
+  public Optional<RouteMatch<H>> match(HttpMethod method, String path) {
     path = path.charAt(path.length() - 1) != '/' ? path + '/' : path; // path must always end with an ending slash.
     TrieNode cursor = this.root;
 
@@ -112,7 +115,8 @@ class TrieRouter implements Router {
     }
 
     if (cursor instanceof TerminalTrieNode terminal) {
-      Route route = terminal.routeForMethod(method);
+      terminal = (TerminalTrieNode<H>) terminal;
+      Route<H> route = terminal.routeForMethod(method);
 
       if (route != null) {
         return Optional.of(RouteMatch.withVariables(terminal.routeForMethod(method), variables));

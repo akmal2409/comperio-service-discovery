@@ -2,14 +2,14 @@ package com.akmal.http.router;
 
 import java.util.Optional;
 
-public interface Router {
+public interface Router<H> {
 
   /**
    * Adds route to the registry.
    * @param route definition.
    * @return same instance for chaining.
    */
-  Router register(Route route);
+  Router<H> register(Route<H> route);
 
   /**
    * Resolves the route definition from the given URL.
@@ -18,10 +18,10 @@ public interface Router {
    * @param path excluding domain
    * @return
    */
-  Optional<RouteMatch> match(HttpMethod method, String path);
+  Optional<RouteMatch<H>> match(HttpMethod method, String path);
 
-  static Router defaultRouter() {
-    return new TrieRouter();
+  static <H> Router<H> defaultRouter() {
+    return new TrieRouter<>();
   }
 
 }

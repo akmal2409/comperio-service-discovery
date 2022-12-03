@@ -1,10 +1,9 @@
 package com.akmal.http.router;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatNoException;
 
-import com.akmal.http.HttpHandler;
 import java.util.Map;
+import org.assertj.core.api.AssertionsForClassTypes;
 import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,18 +11,18 @@ import org.junit.jupiter.api.Test;
 
 class TrieRouterTest {
 
-  TrieRouter router;
-  HttpHandler handler = (request, response) -> {};
+  TrieRouter<NoopRequestHandler> router;
+  NoopRequestHandler handler = new NoopRequestHandler();
 
   @BeforeEach
   void setup() {
-    this.router = new TrieRouter();
+    this.router = new TrieRouter<NoopRequestHandler>();
   }
 
   @Test
   @DisplayName("Should register a route given path")
   void shouldRegisterRouteGivenPath() {
-    Route expectedRoute = Route.of(HttpMethod.GET, "/users", handler);
+    Route<NoopRequestHandler> expectedRoute = Route.of(HttpMethod.GET, "/users", handler);
 
     this.router.register(expectedRoute);
 
@@ -44,7 +43,7 @@ class TrieRouterTest {
   @Test
   @DisplayName("Should return matched variable params")
   void shouldParseVariables() {
-    Route expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}/cars/{carId}", handler);
+    Route<NoopRequestHandler> expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}/cars/{carId}", handler);
     final var path = "/users/12323/cars/543d";
     final var expectedVariables = Map.of("userId", "12323", "carId", "543d");
 
@@ -63,20 +62,20 @@ class TrieRouterTest {
   @Test
   @DisplayName("Should not parse non-ascii characters in a path")
   void shouldNotParseAndThrowExceptionNonAsciiInAPath() {
-    Route expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}/cars/{carId}", handler);
+    Route<NoopRequestHandler> expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}/cars/{carId}", handler);
     final var path = "/use" + (char)(128)  + "rs/12323/cars/543d";
 
     this.router.register(expectedRoute);
 
 
-    assertThatNoException().isThrownBy(() -> this.router.match(HttpMethod.GET, path));
+    AssertionsForClassTypes.assertThatNoException().isThrownBy(() -> this.router.match(HttpMethod.GET, path));
   }
 
   @Test
   @DisplayName("Should parse non-ascii characters in a template variable")
   void shouldParseNonAsciiInAVariable() {
     final var nonAsciiVariable = "日本人中國的";
-    Route expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}", handler);
+    Route<NoopRequestHandler> expectedRoute = Route.of(HttpMethod.GET, "/users/{userId}", handler);
     final var expectedVars = Map.of("userId", nonAsciiVariable);
     final var path = "/users/" + nonAsciiVariable;
 
@@ -94,8 +93,8 @@ class TrieRouterTest {
   @Test
   @DisplayName("Should select more specific route and avoid ambiguity")
   void shouldSelectMoreSpecificRoute() {
-    Route expectedLessSpecificRoute = Route.of(HttpMethod.GET, "/users/{userId}/test", handler);
-    Route expectedSpecificRoute = Route.of(HttpMethod.GET, "/users/specific/test", handler);
+    Route<NoopRequestHandler> expectedLessSpecificRoute = Route.of(HttpMethod.GET, "/users/{userId}/test", handler);
+    Route<NoopRequestHandler> expectedSpecificRoute = Route.of(HttpMethod.GET, "/users/specific/test", handler);
 
     final var path = "/users/specific/test";
 
@@ -114,8 +113,8 @@ class TrieRouterTest {
   @Test
   @DisplayName("Should select less specific route (the one with the variables) when only partial match obtained on a specific route (backtrack)")
   void shouldSelectLessSpecificRouteWhenPartialMatchWithSpecificEncountered() {
-    Route expectedLessSpecificRoute = Route.of(HttpMethod.GET, "/users/{userId}/test", handler);
-    Route expectedSpecificRoute = Route.of(HttpMethod.GET, "/users/specific/test", handler);
+    Route<NoopRequestHandler> expectedLessSpecificRoute = Route.of(HttpMethod.GET, "/users/{userId}/test", handler);
+    Route<NoopRequestHandler> expectedSpecificRoute = Route.of(HttpMethod.GET, "/users/specific/test", handler);
 
     final var path = "/users/specifi/test";
 
@@ -135,12 +134,12 @@ class TrieRouterTest {
   @DisplayName("Should register all different handlers for different verbs on the same route")
   void shouldRegisterAllDiffHandlerForVerbsOnSamePath() {
     String path = "/users";
-    Route expectedGetRoute = Route.of(HttpMethod.GET, path, handler);
-    Route expectedPatchRoute = Route.of(HttpMethod.PATCH, path, handler);
-    Route expectedHeadRoute = Route.of(HttpMethod.HEAD, path, handler);
-    Route expectedPutRoute = Route.of(HttpMethod.PUT, path, handler);
-    Route expectedOptionsRoute = Route.of(HttpMethod.OPTIONS, path, handler);
-    Route expectedPostRoute = Route.of(HttpMethod.POST, path, handler);
+    Route<NoopRequestHandler> expectedGetRoute = Route.of(HttpMethod.GET, path, handler);
+    Route<NoopRequestHandler> expectedPatchRoute = Route.of(HttpMethod.PATCH, path, handler);
+    Route<NoopRequestHandler> expectedHeadRoute = Route.of(HttpMethod.HEAD, path, handler);
+    Route<NoopRequestHandler> expectedPutRoute = Route.of(HttpMethod.PUT, path, handler);
+    Route<NoopRequestHandler> expectedOptionsRoute = Route.of(HttpMethod.OPTIONS, path, handler);
+    Route<NoopRequestHandler> expectedPostRoute = Route.of(HttpMethod.POST, path, handler);
 
     this.router.register(expectedGetRoute);
     this.router.register(expectedPatchRoute);
@@ -162,5 +161,11 @@ class TrieRouterTest {
     assertThat(actualPutMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedPutRoute);
     assertThat(actualOptionsMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedOptionsRoute);
     assertThat(actualPostMatch).extracting(RouteMatch::route).usingRecursiveComparison().isEqualTo(expectedPostRoute);
+  }
+
+  class NoopRequestHandler {
+    void handle() {
+      // empty
+    }
   }
 }

@@ -1,22 +1,20 @@
 package com.akmal.http.router;
 
-import com.akmal.http.HttpHandler;
 import com.akmal.http.util.Tuple;
 import java.util.ArrayList;
-import lombok.ToString;
 import org.jetbrains.annotations.VisibleForTesting;
 
-@ToString(exclude = {"handler"})
-public class Route {
+
+public class Route<H> {
   static final char VARIABLE_PLACEHOLDER = '$';
   private final HttpMethod method;
   private final String path;
-  private final HttpHandler handler;
+  private final H handler;
   private final String[] variables;
   private final String pathWithWildcards;
 
 
-  Route(HttpMethod method, String path, HttpHandler handler) {
+  Route(HttpMethod method, String path, H handler) {
     this.method = method;
 
     boolean nonAscii = path.codePoints().anyMatch(c -> c > 127);
@@ -29,8 +27,8 @@ public class Route {
     this.pathWithWildcards = replacedPathAndVars.first();
   }
 
-  public static Route of(HttpMethod method, String path, HttpHandler handler) {
-    return new Route(method, path, handler);
+  public static <H> Route<H> of(HttpMethod method, String path, H handler) {
+    return new Route<>(method, path, handler);
   }
 
   /**
@@ -39,7 +37,7 @@ public class Route {
    */
   @VisibleForTesting
   private Tuple<String, String[]> parseVariables(String path) {
-    final var variables = new ArrayList<>(3);
+    final var variables = new ArrayList<String>(3);
     final var sb = new StringBuilder(path.length());
 
     int i = 0;
@@ -76,7 +74,7 @@ public class Route {
     return path;
   }
 
-  public HttpHandler getHandler() {
+  public H getHandler() {
     return handler;
   }
 

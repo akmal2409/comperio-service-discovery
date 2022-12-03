@@ -2,6 +2,7 @@ package com.akmal;
 
 import com.akmal.http.HttpStatus;
 import com.akmal.http.MediaType;
+
 import com.akmal.http.router.HttpMethod;
 import com.akmal.http.router.Route;
 import com.akmal.http.router.Router;
@@ -9,9 +10,7 @@ import com.akmal.http.server.HttpServer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import org.slf4j.Logger;

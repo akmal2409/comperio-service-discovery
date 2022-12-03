@@ -10,6 +10,7 @@
   <modules>
     <module>comperio-server</module>
     <module>http-server</module>
+    <module>http-router</module>
   </modules>
   <packaging>pom</packaging>
 

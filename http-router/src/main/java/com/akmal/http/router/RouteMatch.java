@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public record RouteMatch(
-    Route route,
+public record RouteMatch<H>(
+    Route<H> route,
     Map<String, String> variables
 ) {
 
@@ -20,11 +20,11 @@ public record RouteMatch(
    * @param route matched route.
    * @param variables ordered values of variables.
    */
-  public static RouteMatch withVariables(Route route, List<String> variables) {
+  public static <H> RouteMatch<H> withVariables(Route<H> route, List<String> variables) {
     final var variableMap = IntStream.range(0, Math.min(route.getVariables().length, variables.size()))
                                 .mapToObj(i -> new Tuple<>(route.getVariables()[i], variables.get(i)))
                                 .collect(Collectors.toMap(Tuple::first, Tuple::second));
 
-    return new RouteMatch(route, variableMap);
+    return new RouteMatch<>(route, variableMap);
   }
 }
