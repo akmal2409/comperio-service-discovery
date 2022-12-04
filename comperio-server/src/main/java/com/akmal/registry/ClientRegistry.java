@@ -30,6 +30,8 @@ public interface ClientRegistry {
    */
   boolean deregister(String application, String instanceId);
 
+  boolean renewInstance(String application, String instanceId);
+
   /**
    * Queries all the {@link ClientRegistration} instances associated with an application (if any).
    *

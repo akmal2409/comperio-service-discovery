@@ -30,12 +30,13 @@ class ConcurrentClientRegistryTest {
   }
 
   long timeout = 20L;
-  TestClock clock = new TestClock();
+  TestClock clock;
   ConcurrentClientRegistry expiringRegistry;
   ConcurrentClientRegistry nonExpiringRegistry;
 
   @BeforeEach
   void setup() {
+    clock = new TestClock();
     expiringRegistry = new ConcurrentClientRegistry(timeout, clock);
     nonExpiringRegistry = new ConcurrentClientRegistry(Long.MAX_VALUE, new TestClock());
   }
@@ -44,8 +45,9 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should register client registration successfully from a single thread, no previous entry")
   void shouldRegisterClientEntrySuccessfullyNoPrevious() throws UnknownHostException {
+    clock.time = 1000000L;
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
 
     nonExpiringRegistry.register("test", expectedRegistration);
 
@@ -61,12 +63,13 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should register client registration successfully from a single thread with previous entry present")
   void shouldRegisterClientEntrySuccessfullyPrevious() throws UnknownHostException {
+    clock.time = 1000000L;
     ClientRegistration expectedOldRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
     nonExpiringRegistry.register(expectedOldRegistration.application(), expectedOldRegistration);
 
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
 
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
 
@@ -82,8 +85,9 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should de-register client successfully when present, single thread")
   void shouldDeregisterClientWhenPresent() throws UnknownHostException {
+    clock.time = 1000000L;
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
 
     boolean status = nonExpiringRegistry.deregister(expectedRegistration.application(), expectedRegistration.instanceId());
@@ -99,10 +103,11 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should de-register client successfully when present and other client registration being present in the same client map, single thread")
   void shouldDeregisterClientWhenPresentWithOthersIntact() throws UnknownHostException {
+    clock.time = 100000L;
     ClientRegistration otherRegistration = new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
     nonExpiringRegistry.register(otherRegistration.application(), otherRegistration);
 
@@ -125,8 +130,9 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should not de-register client when not present, but other client is present under the same application")
   void shouldNotDeregisterClientWhenNotPresent() throws UnknownHostException {
+    clock.time = 100000L;
     ClientRegistration otherRegistration = new ClientRegistration("test", "testOther", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
     nonExpiringRegistry.register(otherRegistration.application(), otherRegistration);
 
     boolean status = nonExpiringRegistry.deregister(otherRegistration.application(), "not-present");
@@ -150,8 +156,9 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should remove empty client map when last client is deregistered")
   void shouldRemoveMapWhenLastClientDeregistered() throws UnknownHostException {
+    clock.time = 1000000L;
     ClientRegistration registration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), System.currentTimeMillis(), ClientStatus.UP);
+        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
 
     nonExpiringRegistry.register(registration.application(), registration);
 
@@ -165,13 +172,13 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should evict expired entries from registry on read one")
   void shouldEvictExpiredEntriesFromRegistryOnRead() throws UnknownHostException {
-    long entryTimestamp = System.currentTimeMillis();
+    long entryTimestamp = 100000L;
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -190,13 +197,13 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should evict expired entries from registry on read all by application")
   void shouldEvictExpiredEntriesFromRegistryOnReadAllByApp() throws UnknownHostException {
-    long entryTimestamp = System.currentTimeMillis();
+    long entryTimestamp = 100000L;
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -216,13 +223,13 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should evict expired entries from registry on delete")
   void shouldEvictExpiredEntriesFromRegistryOnDelete() throws UnknownHostException {
-    long entryTimestamp = System.currentTimeMillis();
+    long entryTimestamp = 1000000L;
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -242,13 +249,13 @@ class ConcurrentClientRegistryTest {
   @Test
   @DisplayName("Should evict expired entries from registry on write")
   void shouldEvictExpiredEntriesFromRegistryOnWrite() throws UnknownHostException {
-    long entryTimestamp = System.currentTimeMillis();
+    long entryTimestamp = 10000000L;
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
 
@@ -263,5 +270,39 @@ class ConcurrentClientRegistryTest {
 
     assertThat(actualEvictedRegistration).isNull();
     assertThat(actualNonEvictedRegistration).isNotNull();
+  }
+
+
+  @Test
+  @DisplayName("Should renew client registration when present")
+  void shouldRenewClientRegistrationWhenPresent() throws UnknownHostException {
+    long initialTimestamp = 1000000L;
+    long renewedTimestamp = initialTimestamp + 10;
+
+    ClientRegistration toBeNewedRegistration = new ClientRegistration("test", "test1", "http://localhost",
+        InetAddress.getLocalHost(), initialTimestamp, initialTimestamp, ClientStatus.UP);
+    ClientRegistration expectedRegistration = new ClientRegistration("test", "test1", "http://localhost",
+        InetAddress.getLocalHost(), initialTimestamp, renewedTimestamp, ClientStatus.UP);
+
+    expiringRegistry.register(toBeNewedRegistration.application(), toBeNewedRegistration);
+
+    clock.time = renewedTimestamp;
+    boolean renewed = expiringRegistry.renewInstance(toBeNewedRegistration.application(), toBeNewedRegistration.instanceId());
+
+    ClientRegistration actualRegistration = expiringRegistry.findOneByApplicationAndInstanceId(toBeNewedRegistration.application(), toBeNewedRegistration.instanceId())
+                                                .orElse(null);
+
+    assertThat(renewed).isTrue();
+    assertThat(actualRegistration).isNotNull().usingRecursiveComparison().isEqualTo(expectedRegistration);
+  }
+
+
+  @Test
+  @DisplayName("Should not renew client when not present")
+  void shouldNotRenewClientWhenNotPresent() {
+    clock.time = 100000L;
+    boolean renewed = expiringRegistry.renewInstance("test", "test");
+
+    assertThat(renewed).isFalse();
   }
 }

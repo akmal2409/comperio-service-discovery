@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import lombok.extern.java.Log;
 import net.jcip.annotations.ThreadSafe;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 @VisibleForTesting
 class ConcurrentClientRegistry implements ClientRegistry {
   protected static final Logger log = LoggerFactory.getLogger(ConcurrentClientRegistry.class);
+  private static final String APP_INSTANCE_LOG_METADATA = "application={};instance_id={};address={};host={};status={};registration_timestamp={}";
   @VisibleForTesting protected final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
   private final long timeoutMs;
   private final Clock clock; // solely for testing time dependent methods without waiting
@@ -41,11 +43,45 @@ class ConcurrentClientRegistry implements ClientRegistry {
 
     this.evictExpiredEntries(application);
 
-    log.debug("message=Registered client;application={};instance_id={};address={};host={};status={};timestamp={}", application,
+    log.debug("message=Registered client;" + APP_INSTANCE_LOG_METADATA + ";upda", application,
         registration.instanceId(), registration.ipAddress() != null ? registration.ipAddress().getHostAddress() : null, registration.host(),
-        registration.status(), registration.timestamp());
+        registration.status(), registration.registrationTimestamp());
   }
 
+  /**
+   * Updates the lastRenewalTimestamp on a client registration object by performing a CAS operation.
+   * @param application id of the group of instances.
+   * @param instanceId id of the instance.
+   * @return whether the lease has been renewed.
+   */
+  @Override
+  public boolean renewInstance(String application, String instanceId) {
+    this.evictExpiredEntries(application);
+
+    var curMap = this.registry.get(application);
+
+    boolean renewed = false;
+
+    while (!renewed) {
+      if (curMap == null || !curMap.containsKey(instanceId)) break;
+
+      final var newMap = new ConcurrentHashMap<>(curMap);
+      final var renewedRegistration = newMap.get(instanceId).withLastRenewalTimestamp(this.clock.currentTimeMillis());
+      newMap.put(instanceId, renewedRegistration); // renew timestamp
+
+      // try to put it, CAS operation, if the map has been modified attempt again in a loop
+      if (!this.registry.replace(application, curMap, newMap)) {
+        curMap = this.registry.get(application);
+      } else {
+        renewed = true;
+        log.debug("message=Renewed lease of an instance;" + APP_INSTANCE_LOG_METADATA,
+            application, instanceId, renewedRegistration.ipAddress() != null ? renewedRegistration.ipAddress().toString() : null, renewedRegistration.host(),
+            renewedRegistration.status(), renewedRegistration.registrationTimestamp());
+      }
+    }
+
+    return renewed;
+  }
 
   /**
    * Method deregisters the client by removing the entry in the registry.
@@ -92,9 +128,9 @@ class ConcurrentClientRegistry implements ClientRegistry {
     }
 
     if (oldRegistration != null) {
-      log.debug("message=De-registered client;application={};instance_id={};address={};host={};status={};timestamp={}", application,
+      log.debug("message=De-registered client;" + APP_INSTANCE_LOG_METADATA, application,
           oldRegistration.instanceId(), oldRegistration.ipAddress() != null ? oldRegistration.ipAddress().getHostAddress() : null, oldRegistration.host(),
-          oldRegistration.status(), oldRegistration.timestamp());
+          oldRegistration.status(), oldRegistration.registrationTimestamp());
     }
 
     return removed;
@@ -161,8 +197,13 @@ class ConcurrentClientRegistry implements ClientRegistry {
     long currentTime = clock.currentTimeMillis();
 
     for (Entry<String, ClientRegistration> entry: map.entrySet()) {
-      if (timeoutMs == Long.MAX_VALUE || (currentTime - entry.getValue().timestamp()) < timeoutMs) {
+      if (timeoutMs == Long.MAX_VALUE || (currentTime - entry.getValue().lastRenewalTimestamp()) < timeoutMs) {
         newMap.put(entry.getKey(), entry.getValue());
+      } else {
+        log.debug("message=Expiring client entry for application {};" + APP_INSTANCE_LOG_METADATA,
+            entry.getValue().application(), entry.getValue().application(), entry.getValue().instanceId(),
+            entry.getValue().ipAddress() != null ? entry.getValue().ipAddress().toString() : null, entry.getValue().host(),
+            entry.getValue().status(), entry.getValue().registrationTimestamp());
       }
     }
 
