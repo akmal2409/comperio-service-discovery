@@ -18,13 +18,14 @@ import org.slf4j.LoggerFactory;
  * Implementation of the {@link ClientRegistry} interface that supports concurrent access
  * be delegating concurrency to {@link ConcurrentMap} implementations.
  * The only custom lock-free synchronization that has been implemented is the CAS removal of the entry.
- * Additionally if the timeout is set to something lower than Long.MAX_VALUE the registry will
+ * Additionally, if the timeout is set to something lower than Long.MAX_VALUE the registry will
  * perform eviction of expired entries lazily on demand during read and removal.
  */
 @ThreadSafe
 @VisibleForTesting
 class ConcurrentClientRegistry implements ClientRegistry {
   protected static final Logger log = LoggerFactory.getLogger(ConcurrentClientRegistry.class);
+  private static final int MIN_RENEWALS_TO_CONSIDER_INSTANCE_UP = 3; // client is required to send 3 heartbeats in order to get the status up.
   private static final String APP_INSTANCE_LOG_METADATA = "application={};instance_id={};address={};host={};status={};registration_timestamp={}";
   @VisibleForTesting protected final ConcurrentMap<String, ConcurrentMap<String, ClientRegistration>> registry;
   private final long timeoutMs;
@@ -39,11 +40,11 @@ class ConcurrentClientRegistry implements ClientRegistry {
   @Override
   public void register(@NotNull String application,@NotNull ClientRegistration registration) {
     registry.computeIfAbsent(application, key -> new ConcurrentHashMap<>())
-        .put(registration.instanceId(), registration);
+        .put(registration.instanceId(), registration.withStatus(ClientStatus.COLD));
 
     this.evictExpiredEntries(application);
 
-    log.debug("message=Registered client;" + APP_INSTANCE_LOG_METADATA + ";upda", application,
+    log.debug("message=Registered client;" + APP_INSTANCE_LOG_METADATA, application,
         registration.instanceId(), registration.ipAddress() != null ? registration.ipAddress().getHostAddress() : null, registration.host(),
         registration.status(), registration.registrationTimestamp());
   }
@@ -66,8 +67,15 @@ class ConcurrentClientRegistry implements ClientRegistry {
       if (curMap == null || !curMap.containsKey(instanceId)) break;
 
       final var newMap = new ConcurrentHashMap<>(curMap);
-      final var renewedRegistration = newMap.get(instanceId).withLastRenewalTimestamp(this.clock.currentTimeMillis());
-      newMap.put(instanceId, renewedRegistration); // renew timestamp
+      var renewedRegistration = newMap.get(instanceId).withLastRenewalTimestamp(this.clock.currentTimeMillis())
+                                          .withRenewalsSinceRegistration((newMap.get(instanceId).renewalsSinceRegistration() + 1) & Long.MAX_VALUE);
+
+      if (renewedRegistration.renewalsSinceRegistration() >= MIN_RENEWALS_TO_CONSIDER_INSTANCE_UP &&
+              ClientStatus.COLD.equals(renewedRegistration.status())) {
+        renewedRegistration = renewedRegistration.withStatus(ClientStatus.UP);
+      }
+
+      newMap.put(instanceId, renewedRegistration); // renew timestamp and possibly status
 
       // try to put it, CAS operation, if the map has been modified attempt again in a loop
       if (!this.registry.replace(application, curMap, newMap)) {

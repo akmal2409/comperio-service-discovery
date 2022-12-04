@@ -47,7 +47,7 @@ class ConcurrentClientRegistryTest {
   void shouldRegisterClientEntrySuccessfullyNoPrevious() throws UnknownHostException {
     clock.time = 1000000L;
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
 
     nonExpiringRegistry.register("test", expectedRegistration);
 
@@ -65,11 +65,11 @@ class ConcurrentClientRegistryTest {
   void shouldRegisterClientEntrySuccessfullyPrevious() throws UnknownHostException {
     clock.time = 1000000L;
     ClientRegistration expectedOldRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
     nonExpiringRegistry.register(expectedOldRegistration.application(), expectedOldRegistration);
 
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
 
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
 
@@ -87,7 +87,7 @@ class ConcurrentClientRegistryTest {
   void shouldDeregisterClientWhenPresent() throws UnknownHostException {
     clock.time = 1000000L;
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
 
     boolean status = nonExpiringRegistry.deregister(expectedRegistration.application(), expectedRegistration.instanceId());
@@ -105,9 +105,9 @@ class ConcurrentClientRegistryTest {
   void shouldDeregisterClientWhenPresentWithOthersIntact() throws UnknownHostException {
     clock.time = 100000L;
     ClientRegistration otherRegistration = new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
     nonExpiringRegistry.register(expectedRegistration.application(), expectedRegistration);
     nonExpiringRegistry.register(otherRegistration.application(), otherRegistration);
 
@@ -132,7 +132,7 @@ class ConcurrentClientRegistryTest {
   void shouldNotDeregisterClientWhenNotPresent() throws UnknownHostException {
     clock.time = 100000L;
     ClientRegistration otherRegistration = new ClientRegistration("test", "testOther", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
     nonExpiringRegistry.register(otherRegistration.application(), otherRegistration);
 
     boolean status = nonExpiringRegistry.deregister(otherRegistration.application(), "not-present");
@@ -158,7 +158,7 @@ class ConcurrentClientRegistryTest {
   void shouldRemoveMapWhenLastClientDeregistered() throws UnknownHostException {
     clock.time = 1000000L;
     ClientRegistration registration = new ClientRegistration("test", "test", "http://localhost",
-        InetAddress.getLocalHost(), clock.time, clock.time, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), clock.time, clock.time, 3, ClientStatus.UP);
 
     nonExpiringRegistry.register(registration.application(), registration);
 
@@ -176,9 +176,9 @@ class ConcurrentClientRegistryTest {
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, 3, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, 3, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -201,9 +201,9 @@ class ConcurrentClientRegistryTest {
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, 3, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, 3, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -227,9 +227,9 @@ class ConcurrentClientRegistryTest {
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, 3, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, 3, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
     expiringRegistry.register(nonEvictedRegistration.application(), nonEvictedRegistration);
@@ -253,9 +253,9 @@ class ConcurrentClientRegistryTest {
     long timeOfExpiry = entryTimestamp + timeout;
 
     ClientRegistration evictedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp, 3, ClientStatus.UP);
     ClientRegistration nonEvictedRegistration =  new ClientRegistration("test", "test2", "http://localhost",
-        InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), entryTimestamp, entryTimestamp + timeOfExpiry + 1, 3, ClientStatus.UP);
 
     expiringRegistry.register(evictedRegistration.application(), evictedRegistration);
 
@@ -280,9 +280,9 @@ class ConcurrentClientRegistryTest {
     long renewedTimestamp = initialTimestamp + 10;
 
     ClientRegistration toBeNewedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), initialTimestamp, initialTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), initialTimestamp, initialTimestamp, 3, ClientStatus.UP);
     ClientRegistration expectedRegistration = new ClientRegistration("test", "test1", "http://localhost",
-        InetAddress.getLocalHost(), initialTimestamp, renewedTimestamp, ClientStatus.UP);
+        8080, InetAddress.getLocalHost(), initialTimestamp, renewedTimestamp, 3, ClientStatus.UP);
 
     expiringRegistry.register(toBeNewedRegistration.application(), toBeNewedRegistration);
 
