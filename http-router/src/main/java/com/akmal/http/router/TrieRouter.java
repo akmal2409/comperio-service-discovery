@@ -17,7 +17,10 @@ class TrieRouter<H> implements Router<H> {
     protected final TrieNode[] children;
 
     private TrieNode() {
-      this.children = new TrieNode[128];
+      this(new TrieNode[128]);
+    }
+    private TrieNode(TrieNode[] children) {
+      this.children = children;
     }
   }
 
@@ -26,7 +29,13 @@ class TrieRouter<H> implements Router<H> {
 
     @SuppressWarnings("unchecked")
     private TerminalTrieNode() {
-      this.routes = (Route<H>[]) new Route[6];
+      this.routes = (Route<H>[]) new Route[7];
+    }
+
+    @SuppressWarnings("unchecked")
+    private TerminalTrieNode(TrieNode node) {
+      super(node.children);
+      this.routes = (Route<H>[]) new Route[7];
     }
 
     private void addRouteForMethod(HttpMethod method, Route<H> route) {
@@ -60,7 +69,10 @@ class TrieRouter<H> implements Router<H> {
       cursor = cursor.children[characters[i]];
     }
 
-    if (cursor.children[characters[characters.length - 1]] == null) cursor.children[characters[characters.length - 1]] = new TerminalTrieNode();
+    if (cursor.children[characters[characters.length - 1]] == null) cursor.children[characters[characters.length - 1]] = new TerminalTrieNode<H>();
+    else if (!(cursor.children[characters[characters.length - 1]]  instanceof TrieRouter.TerminalTrieNode<?>)) {
+      cursor.children[characters[characters.length - 1]] = new TerminalTrieNode<>(cursor.children[characters[characters.length - 1]]);
+    }
 
     ((TerminalTrieNode<H>) cursor.children[characters[characters.length - 1]]).addRouteForMethod(route.getMethod(), route);
     return this;
