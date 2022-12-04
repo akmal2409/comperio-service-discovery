@@ -24,6 +24,7 @@
     <jcip-annotations.version>1.0</jcip-annotations.version>
     <assertj-core.version>3.22.0</assertj-core.version>
     <lombok.version>1.18.24</lombok.version>
+    <jansi.version>2.4.0</jansi.version>
   </properties>
 
   <dependencyManagement>
@@ -39,6 +40,11 @@
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback-classic.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.fusesource.jansi</groupId>
+        <artifactId>jansi</artifactId>
+        <version>${jansi.version}</version>
       </dependency>
       <dependency>
         <groupId>org.assertj</groupId>
