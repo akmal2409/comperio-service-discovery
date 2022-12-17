@@ -1,12 +1,12 @@
 package com.akmal;
 
-import com.akmal.http.HttpStatus;
-import com.akmal.http.MediaType;
+import com.akmal.comperio.http.HttpStatus;
+import com.akmal.comperio.http.MediaType;
 
-import com.akmal.http.router.HttpMethod;
-import com.akmal.http.router.Route;
-import com.akmal.http.router.Router;
-import com.akmal.http.server.HttpServer;
+import com.akmal.comperio.http.router.HttpMethod;
+import com.akmal.comperio.http.router.Route;
+import com.akmal.comperio.http.router.Router;
+import com.akmal.comperio.http.server.HttpServer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedInputStream;
